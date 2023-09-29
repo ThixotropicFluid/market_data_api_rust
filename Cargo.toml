@@ -1,5 +1,5 @@
 [package]
-name = "market_data_api"
+name = "financial_modeling_prep_api_rust"
 version = "0.1.0"
 edition = "2021"
 

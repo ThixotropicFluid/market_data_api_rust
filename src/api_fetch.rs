@@ -1,86 +1,76 @@
 use reqwest;
-use reqwest::header::{HeaderMap, HeaderValue};
+use reqwest::header::{HeaderMap, HeaderValue, UPGRADE_INSECURE_REQUESTS};
 use reqwest::Client;
-use serde;
 use serde_json;
-
-struct APIClient<'a> {
+use std::fmt;
+pub struct APIClient<'a> {
     token: &'a str,
     url: &'a str,
-    headers: Option<HeaderMap>,
 }
-async fn genrate_headers(api_client: &APIClient<'_>) -> HeaderMap {
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        "Authorization",
-        HeaderValue::from_str(&format!("Token {}", api_client.token)).unwrap(),
-    );
-    headers
+
+impl APIClient<'_> {
+    pub async fn get_api_request(&self, api_request: APIRequest) -> Result<APIResponce, APIError> {
+        Err(APIError::BadToken)
+    }
+    async fn generate_request_url(&self, request: &str) -> String {
+        let mut url = String::new();
+
+        url.push_str(self.url);
+        url.push_str(request);
+        url.push_str("?apikey=");
+        url.push_str(self.token);
+
+        url
+    }
+    async fn send_request(&self, request: &str) -> Result<serde_json::Value, reqwest::Error> {
+        let client = Client::new();
+
+        let url = &self.generate_request_url(request).await;
+
+        let response = client.get(url).send().await?;
+        // Parse the JSON response and return it as serde_json::Value
+        let json_response: serde_json::Value = response.json().await?;
+        return Ok(json_response);
+    }
 }
-async fn ping(api_client: &APIClient<'_>) -> Result<(), reqwest::Error> {
-    // Define the API endpoint and token
-    let url = "https://api.marketdata.app/v1/stocks/quotes/SPY/";
-
-    // Create a reqwest Client
-    let client = Client::new();
-
-    // Create headers
-    let mut headers = HeaderMap::new();
-    headers.insert(
-        "Authorization",
-        HeaderValue::from_str(&format!("Token {}", api_client.token)).unwrap(),
-    );
-
-    // Send the GET request with headers
-    //let response = client.get(url).send().await?.json().await?;
-    let response = client
-        .get(api_client.url)
-        .headers(headers.clone())
-        .send()
-        .await?
-        .json::<serde_json::Value>()
-        .await?;
-
-    Ok(())
+#[derive(Debug)]
+pub enum APIError {
+    BadToken,
 }
+impl std::error::Error for APIError {}
+impl fmt::Display for APIError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "SuperErrorSideKick is here!")
+    }
+}
+
+pub enum APIRequest {}
+pub enum APIResponce {}
 #[cfg(test)]
 mod tests {
     use super::*;
-
     #[tokio::test]
-    async fn test_header_generation() {
-        let mut api_client = APIClient {
-            token: "not_a_token",
-            url: "not_a_url",
-            headers: None,
+    async fn generate_request_url_test() {
+        let api_client = APIClient {
+            token: "YOUR_API_KEY",
+            url: "https://financialmodelingprep.com/api/v3/",
         };
-        let headers = genrate_headers(&api_client).await;
-        api_client.headers = Some(headers);
+        let url = &api_client.generate_request_url(r#"example_request"#).await;
         assert_eq!(
-            api_client
-                .headers
-                .unwrap()
-                .get("authorization")
-                .unwrap()
-                .to_str()
-                .unwrap(),
-            format!("Token {}", api_client.token)
+            url,
+            r#"https://financialmodelingprep.com/api/v3/example_request?apikey=YOUR_API_KEY"#
         );
     }
-    async fn test_api_client_construction() {}
-    // Define a test function for the ping function.
     #[tokio::test]
-    async fn test_ping() {
+    async fn send_request_test() {
         let api_client = APIClient {
-            token: "ekxVZ2l4RUdnTkxVNnJ3dlkxUlFUMmtLdnpVSDFOUGttdE5FWGItR1hHYz0",
-            url: "https://www.rust-lang.org/",
-            headers: None,
+            token: "a995695cf5f49207748df3ee74fa7e71",
+            url: "https://financialmodelingprep.com/api/v3/",
         };
-        match ping(&api_client).await {
-            Ok(()) => {}
-            Err(err) => {
-                dbg!(err);
-            }
-        }
+        let responce = api_client
+            .send_request("financial-statement-symbol-lists")
+            .await
+            .unwrap();
+        println!("{}", responce);
     }
 }
