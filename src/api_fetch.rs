@@ -1,16 +1,23 @@
+#![allow(dead_code)]
+#![allow(unused_imports)]
+use crate::api_request_handler;
 use reqwest;
-use reqwest::header::{HeaderMap, HeaderValue, UPGRADE_INSECURE_REQUESTS};
 use reqwest::Client;
 use serde_json;
-use std::fmt;
 pub struct APIClient<'a> {
-    token: &'a str,
-    url: &'a str,
+    pub token: &'a str,
+    pub url: &'a str,
 }
 
 impl APIClient<'_> {
-    pub async fn get_api_request(&self, api_request: APIRequest) -> Result<APIResponce, APIError> {
-        Err(APIError::BadToken)
+    pub async fn get_json<T: api_request_handler::request_type::RequestType>(
+        &self,
+        request: &mut T,
+    ) -> Result<(), reqwest::Error> {
+        let request_str = &request.generate_request()[..];
+        let response = self.send_request(request_str).await?;
+        request.set_json(response);
+        Ok(())
     }
     async fn generate_request_url(&self, request: &str) -> String {
         let mut url = String::new();
@@ -33,19 +40,7 @@ impl APIClient<'_> {
         return Ok(json_response);
     }
 }
-#[derive(Debug)]
-pub enum APIError {
-    BadToken,
-}
-impl std::error::Error for APIError {}
-impl fmt::Display for APIError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "SuperErrorSideKick is here!")
-    }
-}
 
-pub enum APIRequest {}
-pub enum APIResponce {}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -53,9 +48,11 @@ mod tests {
     async fn generate_request_url_test() {
         let api_client = APIClient {
             token: "YOUR_API_KEY",
-            url: "https://financialmodelingprep.com/api/v3/",
+            url: "https://financialmodelingprep.com/api/",
         };
-        let url = &api_client.generate_request_url(r#"example_request"#).await;
+        let url = &api_client
+            .generate_request_url(r#"v3/example_request"#)
+            .await;
         assert_eq!(
             url,
             r#"https://financialmodelingprep.com/api/v3/example_request?apikey=YOUR_API_KEY"#
@@ -65,10 +62,10 @@ mod tests {
     async fn send_request_test() {
         let api_client = APIClient {
             token: "a995695cf5f49207748df3ee74fa7e71",
-            url: "https://financialmodelingprep.com/api/v3/",
+            url: "https://financialmodelingprep.com/api/",
         };
         let responce = api_client
-            .send_request("financial-statement-symbol-lists")
+            .send_request("v3/financial-statement-symbol-lists")
             .await
             .unwrap();
         println!("{}", responce);
