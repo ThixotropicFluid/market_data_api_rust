@@ -4,7 +4,7 @@ use crate::api_request_handler::request_type::RequestType;
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::fmt;
-mod request_type {
+pub mod request_type {
     pub trait RequestType {
         type Data;
         fn set_json(&mut self, json: serde_json::Value);
